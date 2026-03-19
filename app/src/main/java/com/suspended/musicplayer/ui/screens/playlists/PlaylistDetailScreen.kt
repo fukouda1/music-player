@@ -2,6 +2,7 @@ package com.suspended.musicplayer.ui.screens.playlists
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -10,10 +11,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.suspended.musicplayer.domain.model.Song
 import com.suspended.musicplayer.ui.components.SongItem
+import com.suspended.musicplayer.util.formatDuration
 import com.suspended.musicplayer.util.formatSongCount
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -134,35 +137,131 @@ private fun AddSongsDialog(
     onDismiss: () -> Unit,
     onAdd: (Long) -> Unit
 ) {
+    var searchQuery by remember { mutableStateOf("") }
+    val addedSongIds = remember { mutableStateListOf<Long>() }
+
+    val filteredSongs = remember(searchQuery, availableSongs, addedSongIds) {
+        val base = availableSongs.filter { it.id !in addedSongIds }
+        if (searchQuery.isBlank()) base
+        else {
+            val q = searchQuery.lowercase()
+            base.filter {
+                it.title.lowercase().contains(q) ||
+                        it.artist.lowercase().contains(q) ||
+                        it.album.lowercase().contains(q)
+            }
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add Songs") },
         text = {
-            LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
-                itemsIndexed(availableSongs) { _, song ->
-                    ListItem(
-                        headlineContent = { Text(song.title, maxLines = 1) },
-                        supportingContent = { Text(song.artist, maxLines = 1) },
-                        trailingContent = {
-                            IconButton(onClick = { onAdd(song.id) }) {
-                                Icon(Icons.Default.Add, contentDescription = "Add")
+            Column {
+                // Search bar
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search songs...") },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = "Clear",
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
-                    )
-                }
-                if (availableSongs.isEmpty()) {
-                    item {
-                        Text(
-                            "No more songs to add",
-                            modifier = Modifier.padding(16.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    singleLine = true,
+                    shape = MaterialTheme.shapes.large,
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = MaterialTheme.typography.bodyMedium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Result count
+                Text(
+                    text = "${filteredSongs.size} songs available",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Song list
+                LazyColumn(modifier = Modifier.heightIn(max = 350.dp)) {
+                    items(filteredSongs, key = { it.id }) { song ->
+                        ListItem(
+                            headlineContent = {
+                                Text(
+                                    song.title,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            },
+                            supportingContent = {
+                                Text(
+                                    "${song.artist} • ${song.duration.formatDuration()}",
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            trailingContent = {
+                                IconButton(onClick = {
+                                    onAdd(song.id)
+                                    addedSongIds.add(song.id)
+                                }) {
+                                    Icon(
+                                        Icons.Default.AddCircleOutline,
+                                        contentDescription = "Add",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            },
+                            modifier = Modifier.padding(vertical = 0.dp)
                         )
+                    }
+
+                    if (filteredSongs.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (searchQuery.isNotEmpty()) "No songs match \"$searchQuery\""
+                                    else "No more songs to add",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Done") }
+            TextButton(onClick = onDismiss) {
+                Text(
+                    if (addedSongIds.isNotEmpty()) "Done (${addedSongIds.size} added)"
+                    else "Done"
+                )
+            }
         }
     )
 }

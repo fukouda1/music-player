@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.suspended.musicplayer.data.repository.MusicRepository
 import com.suspended.musicplayer.domain.model.Album
+import com.suspended.musicplayer.domain.model.Playlist
 import com.suspended.musicplayer.domain.model.Song
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -14,6 +15,7 @@ data class HomeUiState(
     val recentSongs: List<Song> = emptyList(),
     val mostPlayedSongs: List<Song> = emptyList(),
     val recentAlbums: List<Album> = emptyList(),
+    val playlists: List<Playlist> = emptyList(),
     val allSongs: List<Song> = emptyList(),
     val isLoading: Boolean = true
 )
@@ -28,6 +30,7 @@ class HomeViewModel @Inject constructor(
 
     init {
         loadData()
+        observePlaylists()
     }
 
     fun loadData() {
@@ -36,7 +39,6 @@ class HomeViewModel @Inject constructor(
             val songs = repository.getAllSongs()
             val albums = repository.getAllAlbums()
 
-            // Combine with recently played
             repository.getRecentlyPlayed(10).combine(
                 repository.getMostPlayed(10)
             ) { recentIds, mostPlayedIds ->
@@ -52,6 +54,20 @@ class HomeViewModel @Inject constructor(
                     )
                 }
             }.collect()
+        }
+    }
+
+    private fun observePlaylists() {
+        viewModelScope.launch {
+            repository.getAllPlaylists().collect { playlists ->
+                _uiState.update { it.copy(playlists = playlists) }
+            }
+        }
+    }
+
+    fun createPlaylist(name: String) {
+        viewModelScope.launch {
+            repository.createPlaylist(name)
         }
     }
 }

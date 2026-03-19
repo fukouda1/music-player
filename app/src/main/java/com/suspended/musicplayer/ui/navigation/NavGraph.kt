@@ -42,6 +42,7 @@ fun NavGraph(
             HomeScreen(
                 onSongClick = onSongClick,
                 onAlbumClick = { navController.navigate(Screen.AlbumDetail.createRoute(it)) },
+                onPlaylistClick = { navController.navigate(Screen.PlaylistDetail.createRoute(it)) },
                 favoriteIds = favoriteIds,
                 currentSongId = currentSongId,
                 onFavoriteClick = playerViewModel::toggleFavorite
