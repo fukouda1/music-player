@@ -102,7 +102,6 @@ dependencies {
 
     // Accompanist
     implementation("com.google.accompanist:accompanist-permissions:0.37.2")
-    implementation("com.google.accompanist:accompanist-systemuicontroller:0.37.2")
 
     // Palette for dynamic colors from album art
     implementation("androidx.palette:palette-ktx:1.0.0")
